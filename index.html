@@ -62,8 +62,21 @@
 
             setInterval(drawArc, 200);
             animate();
+		    // Update renderer size and camera aspect on window resize
+   	 	window.addEventListener('resize', onWindowResize);
+    		onWindowResize(); // Call it initially to set the size correctly
         }
 
+	function onWindowResize() {
+	    const width = window.innerWidth;
+	    const height = window.innerHeight;
+	    camera.aspect = width / height;
+	    camera.updateProjectionMatrix();
+	    renderer.setSize(width, height);
+
+   	 // Update camera position based on aspect ratio if needed
+   	 camera.position.z = Math.max(100, height / 2);
+	}
         function onMouseDown(event) {
             mouseDown = true;
             previousMousePosition = { x: event.clientX, y: event.clientY };
@@ -177,6 +190,38 @@ function drawArc() {
     }, 1000);
 }
 
+document.addEventListener('touchstart', onTouchStart);
+document.addEventListener('touchmove', onTouchMove);
+document.addEventListener('touchend', onTouchEnd);
+
+function onTouchStart(event) {
+    mouseDown = true;
+    previousMousePosition = { 
+        x: event.touches[0].clientX, 
+        y: event.touches[0].clientY 
+    };
+}
+
+function onTouchMove(event) {
+    if (!mouseDown) return;
+
+    const deltaMove = {
+        x: event.touches[0].clientX - previousMousePosition.x,
+        y: event.touches[0].clientY - previousMousePosition.y
+    };
+
+    globe.rotation.y += deltaMove.x * 0.005;  // Adjust rotation speed
+    globe.rotation.x += deltaMove.y * 0.005;  // Adjust rotation speed
+
+    previousMousePosition = { 
+        x: event.touches[0].clientX, 
+        y: event.touches[0].clientY 
+    };
+}
+
+function onTouchEnd() {
+    mouseDown = false;
+}
 
 
         function animate() {
