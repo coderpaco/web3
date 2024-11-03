@@ -34,22 +34,20 @@
 
             const pixel = ctx.getImageData(x, y, 1, 1).data;
 
+            // Check if the pixel is within the defined land color range and not water
             return (
                 pixel[0] >= landColorRange.min[0] && pixel[0] <= landColorRange.max[0] &&
                 pixel[1] >= landColorRange.min[1] && pixel[1] <= landColorRange.max[1] &&
                 pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2] &&
                 !(pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100) // Exclude specific water hues
             );
-
-            const isWaterHue = (pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100);
-
-            return isLandColor && !isWaterHue;
         }
 
         // Function to draw arcs between land points
         function drawArc() {
             const radius = 50;
             const heightOffset = 5;
+            let pointA, pointB;
 
             // Find random point A on land
             do {
@@ -58,7 +56,7 @@
                     lon: Math.random() * 2 * Math.PI - Math.PI
                 };
             } while (!isPointOnLand(pointA.lat, pointA.lon));
-            
+
             // Find random point B on land
             do {
                 pointB = {
@@ -72,6 +70,7 @@
                 radius * Math.sin(pointA.lat),
                 radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
             );
+
             const pointBCartesian = new THREE.Vector3(
                 radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
                 radius * Math.sin(pointB.lat),
@@ -128,6 +127,7 @@
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
+            
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
             directionalLight.position.set(0, 1, 1).normalize();
             scene.add(directionalLight);
@@ -205,21 +205,10 @@
         function animate() {
             requestAnimationFrame(animate);
             if (globe) {
-                globe.rotation.y += 0.005; // Optional rotation
+                globe.rotation.y += 0.005; // Example rotation speed, you can adjust or remove this
             }
             renderer.render(scene, camera);
         }
-
-        // Define land points (example)
-        const landPoints = [
-            { lat: 0.7102, lon: -1.2915 }, // North America
-            { lat: -0.4102, lon: -0.8149 }, // South America
-            { lat: 0.8989, lon: -0.0022 }, // Europe
-            { lat: -0.0225, lon: 0.6422 }, // Africa
-            { lat: 0.6965, lon: 2.0340 }, // Asia
-            { lat: -0.5910, lon: 2.6391 }, // Australia
-            { lat: -1.5708, lon: 0.0000 }, // Antarctica
-        ];
 
         init();
     </script>
