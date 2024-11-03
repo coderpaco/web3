@@ -22,7 +22,79 @@
         let scene, camera, renderer, globe;
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
-        const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
+        const landColorRange = { min: [100, 100, 100], max: [255, 255, 255] };
+
+        function isPointOnLand(lat, lon) {
+            const x = Math.floor((lon + Math.PI) / (2 * Math.PI) * landTexture.width);
+            const y = Math.floor((Math.PI / 2 - lat) / Math.PI * landTexture.height);
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = landTexture.width;
+            canvas.height = landTexture.height;
+            ctx.drawImage(landTexture, 0, 0);
+
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+
+            const isLandColor = (
+                pixel[0] >= landColorRange.min[0] && pixel[0] <= landColorRange.max[0] &&
+                pixel[1] >= landColorRange.min[1] && pixel[1] <= landColorRange.max[1] &&
+                pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2]
+            );
+
+            const isWaterHue = (pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100);
+
+            return isLandColor && !isWaterHue;
+        }
+
+        // Function to draw arcs between land points
+        function drawArc() {
+            const radius = 50;
+            const heightOffset = 5;
+
+            const pointAIndex = Math.floor(Math.random() * landPoints.length);
+            const pointBIndex = Math.floor(Math.random() * landPoints.length);
+            if (pointAIndex === pointBIndex) return;
+
+            const pointA = landPoints[pointAIndex];
+            const pointB = landPoints[pointBIndex];
+
+            const pointACartesian = new THREE.Vector3(
+                radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
+                radius * Math.sin(pointA.lat),
+                radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
+            );
+            const pointBCartesian = new THREE.Vector3(
+                radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
+                radius * Math.sin(pointB.lat),
+                radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
+            );
+
+            const arcPoints = [];
+            const segments = 30;
+
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const arcPoint = new THREE.Vector3()
+                    .copy(pointACartesian)
+                    .lerp(pointBCartesian, t)
+                    .normalize()
+                    .multiplyScalar(radius);
+
+                arcPoint.y += heightOffset * Math.sin(t * Math.PI);
+                arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
+            }
+
+            const arcGeometry = new THREE.BufferGeometry();
+            arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
+            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const arc = new THREE.Line(arcGeometry, arcMaterial);
+            globe.add(arc);
+
+            setTimeout(() => {
+                globe.remove(arc);
+            }, 1000);
+        }
 
         function init() {
             scene = new THREE.Scene();
@@ -59,11 +131,9 @@
             document.addEventListener('touchstart', onTouchStart);
             document.addEventListener('touchmove', onTouchMove);
             document.addEventListener('touchend', onTouchEnd);
-            document.addEventListener('touchmove', (e) => e.preventDefault()); // Prevent default scrolling on touch devices
 
             setInterval(drawArc, 200);
             animate();
-            onWindowResize(); // Call it initially to set the size correctly
         }
 
         function onWindowResize() {
@@ -72,7 +142,6 @@
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-            camera.position.z = Math.max(100, height / 2); // Adjust based on height
         }
 
         function onMouseDown(event) {
@@ -90,6 +159,7 @@
 
             globe.rotation.y += deltaMove.x * 0.005;
             globe.rotation.x += deltaMove.y * 0.005;
+
             previousMousePosition = { x: event.clientX, y: event.clientY };
         }
 
@@ -99,9 +169,9 @@
 
         function onTouchStart(event) {
             mouseDown = true;
-            previousMousePosition = {
-                x: event.touches[0].clientX,
-                y: event.touches[0].clientY
+            previousMousePosition = { 
+                x: event.touches[0].clientX, 
+                y: event.touches[0].clientY 
             };
         }
 
@@ -115,7 +185,11 @@
 
             globe.rotation.y += deltaMove.x * 0.005;
             globe.rotation.x += deltaMove.y * 0.005;
-            previousMousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+
+            previousMousePosition = { 
+                x: event.touches[0].clientX, 
+                y: event.touches[0].clientY 
+            };
         }
 
         function onTouchEnd() {
@@ -125,10 +199,21 @@
         function animate() {
             requestAnimationFrame(animate);
             if (globe) {
-                globe.rotation.y += 0.005; // Example rotation speed
+                globe.rotation.y += 0.005; // Optional rotation
             }
             renderer.render(scene, camera);
         }
+
+        // Define land points (example)
+        const landPoints = [
+            { lat: 0.7102, lon: -1.2915 }, // North America
+            { lat: -0.4102, lon: -0.8149 }, // South America
+            { lat: 0.8989, lon: -0.0022 }, // Europe
+            { lat: -0.0225, lon: 0.6422 }, // Africa
+            { lat: 0.6965, lon: 2.0340 }, // Asia
+            { lat: -0.5910, lon: 2.6391 }, // Australia
+            { lat: -1.5708, lon: 0.0000 }, // Antarctica
+        ];
 
         init();
     </script>
