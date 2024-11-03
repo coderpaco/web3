@@ -19,22 +19,25 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const version = "1.0.0"; // Change this to your version number
+        const version = "1.0.0"; 
         console.log(`Version: ${version}`);
 
-        
         let scene, camera, renderer, globe;
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
         const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
 
         function isPointOnLand(lat, lon) {
+            if (!landTexture) return false;
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = landTexture.width;
+            canvas.height = landTexture.height;
+            ctx.drawImage(landTexture, 0, 0);
+
             const x = Math.floor((lon + Math.PI) / (2 * Math.PI) * landTexture.width);
             const y = Math.floor((Math.PI / 2 - lat) / Math.PI * landTexture.height);
-
-            ctx.drawImage(landTexture, 0, 0);
             const pixel = ctx.getImageData(x, y, 1, 1).data;
 
             return (
@@ -45,78 +48,62 @@
             );
         }
 
-let arcCount = 0; // Counter for the current number of arcs
-const maxArcs = 10; // Maximum number of arcs to keep in memory
+        let arcCount = 0; 
+        const maxArcs = 10; 
 
-function drawArc() {
-    // Prevent drawing more arcs than allowed
-    if (arcCount >= maxArcs) return;
+        function drawArc() {
+            if (arcCount >= maxArcs) return;
 
-    const radius = 50;
-    const heightOffset = 5;
-    let pointA, pointB;
+            const radius = 50;
+            const heightOffset = 5;
+            let pointA, pointB;
 
-    // Find a random point A on land
-    do {
-        pointA = {
-            lat: Math.random() * Math.PI - Math.PI / 2,
-            lon: Math.random() * 2 * Math.PI - Math.PI
-        };
-    } while (!isPointOnLand(pointA.lat, pointA.lon));
+            do {
+                pointA = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
+            } while (!isPointOnLand(pointA.lat, pointA.lon));
 
-    // Find a random point B on land
-    do {
-        pointB = {
-            lat: Math.random() * Math.PI - Math.PI / 2,
-            lon: Math.random() * 2 * Math.PI - Math.PI
-        };
-    } while (!isPointOnLand(pointB.lat, pointB.lon));
+            do {
+                pointB = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
+            } while (!isPointOnLand(pointB.lat, pointB.lon));
 
-    // Convert latitude and longitude to Cartesian coordinates
-    const pointACartesian = new THREE.Vector3(
-        radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
-        radius * Math.sin(pointA.lat),
-        radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
-    );
+            const pointACartesian = new THREE.Vector3(
+                radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
+                radius * Math.sin(pointA.lat),
+                radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
+            );
 
-    const pointBCartesian = new THREE.Vector3(
-        radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
-        radius * Math.sin(pointB.lat),
-        radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
-    );
+            const pointBCartesian = new THREE.Vector3(
+                radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
+                radius * Math.sin(pointB.lat),
+                radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
+            );
 
-    const arcPoints = [];
-    const segments = 30; // Number of segments for the arc
+            const arcPoints = [];
+            const segments = 30;
 
-    // Generate points along the arc
-    for (let i = 0; i <= segments; i++) {
-        const t = i / segments;
-        const arcPoint = new THREE.Vector3()
-            .copy(pointACartesian)
-            .lerp(pointBCartesian, t)
-            .normalize()
-            .multiplyScalar(radius);
-        arcPoint.y += heightOffset * Math.sin(t * Math.PI); // Create height variation
-        arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
-    }
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const arcPoint = new THREE.Vector3()
+                    .copy(pointACartesian)
+                    .lerp(pointBCartesian, t)
+                    .normalize()
+                    .multiplyScalar(radius);
+                arcPoint.y += heightOffset * Math.sin(t * Math.PI);
+                arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
+            }
 
-    // Create geometry and material for the arc
-    const arcGeometry = new THREE.BufferGeometry();
-    arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
-    const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-    const arc = new THREE.Line(arcGeometry, arcMaterial);
+            const arcGeometry = new THREE.BufferGeometry();
+            arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
+            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const arc = new THREE.Line(arcGeometry, arcMaterial);
+            globe.add(arc);
+            arcCount++;
 
-    // Add the arc to the globe
-    globe.add(arc);
-    arcCount++; // Increment the arc count
-
-    // Remove the arc after 1 second and decrement the count
-    setTimeout(() => {
-        globe.remove(arc);
-        arcCount--; // Decrement the arc count
-    }, 1000);
-}
-
+            setTimeout(() => {
+                globe.remove(arc);
+                arcCount--;
+            }, 1000);
+        }
 
         function init() {
             scene = new THREE.Scene();
@@ -129,16 +116,15 @@ function drawArc() {
             const textureLoader = new THREE.TextureLoader();
 
             textureLoader.load('earth_texture.png', texture => {
-                const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.FrontSide });
+                const material = new THREE.MeshBasicMaterial({ map: texture });
                 globe = new THREE.Mesh(geometry, material);
                 scene.add(globe);
-                landTexture = texture.image;
+                landTexture = texture.image; // Ensure this is loaded properly
             }, undefined, (err) => {
-                console.error('An error happened loading the texture:', err);
+                console.error('An error occurred loading the texture:', err);
             });
 
             camera.position.z = 100;
-
             scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
             directionalLight.position.set(0, 1, 1).normalize();
@@ -211,7 +197,7 @@ function drawArc() {
         function animate() {
             requestAnimationFrame(animate);
             if (globe) {
-                globe.rotation.y += 0.005; // Example rotation speed, you can adjust or remove this
+                globe.rotation.y += 0.005;
             }
             renderer.render(scene, camera);
         }
