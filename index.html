@@ -19,59 +19,80 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const version = "1.0.0"; 
-        console.log(`Version: ${version}`);
-
         let scene, camera, renderer, globe;
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
         const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
 
-        function isPointOnLand(lat, lon) {
-            if (!landTexture) return false;
+        // Define land points
+        const landPoints = [
+            { lat: 0.7102, lon: -1.2915 }, // North America
+            { lat: -0.4102, lon: -0.8149 }, // South America
+            { lat: 0.8989, lon: -0.0022 }, // Europe
+            { lat: -0.0225, lon: 0.6422 }, // Africa
+            { lat: 0.6965, lon: 2.0340 }, // Asia
+            { lat: -0.5910, lon: 2.6391 }, // Australia
+            { lat: -1.5708, lon: 0.0000 }, // Antarctica
+        ];
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = landTexture.width;
-            canvas.height = landTexture.height;
-            ctx.drawImage(landTexture, 0, 0);
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
 
-            const x = Math.floor((lon + Math.PI) / (2 * Math.PI) * landTexture.width);
-            const y = Math.floor((Math.PI / 2 - lat) / Math.PI * landTexture.height);
-            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const geometry = new THREE.SphereGeometry(50, 64, 64);
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load('earth_texture.png', texture => {
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.FrontSide
+                });
 
-            return (
-                pixel[0] >= landColorRange.min[0] && pixel[0] <= landColorRange.max[0] &&
-                pixel[1] >= landColorRange.min[1] && pixel[1] <= landColorRange.max[1] &&
-                pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2] &&
-                !(pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100)
-            );
+                globe = new THREE.Mesh(geometry, material);
+                scene.add(globe);
+                landTexture = texture.image;
+            });
+
+            camera.position.z = 100;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(0, 1, 1).normalize();
+            scene.add(directionalLight);
+
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchstart', onTouchStart);
+            document.addEventListener('touchmove', onTouchMove);
+            document.addEventListener('touchend', onTouchEnd);
+            document.addEventListener('touchmove', (e) => e.preventDefault());
+
+            setInterval(drawArc, 200);
+            animate();
+            onWindowResize();
         }
 
-        let arcCount = 0; 
-        const maxArcs = 10; 
-
         function drawArc() {
-            if (arcCount >= maxArcs) return;
-
             const radius = 50;
             const heightOffset = 5;
-            let pointA, pointB;
 
-            do {
-                pointA = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
-            } while (!isPointOnLand(pointA.lat, pointA.lon));
+            const pointAIndex = Math.floor(Math.random() * landPoints.length);
+            const pointBIndex = Math.floor(Math.random() * landPoints.length);
+            if (pointAIndex === pointBIndex) return;
 
-            do {
-                pointB = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
-            } while (!isPointOnLand(pointB.lat, pointB.lon));
+            const pointA = landPoints[pointAIndex];
+            const pointB = landPoints[pointBIndex];
 
             const pointACartesian = new THREE.Vector3(
                 radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
                 radius * Math.sin(pointA.lat),
                 radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
             );
-
             const pointBCartesian = new THREE.Vector3(
                 radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
                 radius * Math.sin(pointB.lat),
@@ -94,58 +115,21 @@
 
             const arcGeometry = new THREE.BufferGeometry();
             arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
-            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
             const arc = new THREE.Line(arcGeometry, arcMaterial);
             globe.add(arc);
-            arcCount++;
 
             setTimeout(() => {
                 globe.remove(arc);
-                arcCount--;
             }, 1000);
         }
 
-        function init() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
-
-            const geometry = new THREE.SphereGeometry(50, 64, 64);
-            const textureLoader = new THREE.TextureLoader();
-
-            textureLoader.load('earth_texture.png', texture => {
-                const material = new THREE.MeshBasicMaterial({ map: texture });
-                globe = new THREE.Mesh(geometry, material);
-                scene.add(globe);
-                landTexture = texture.image; // Ensure this is loaded properly
-            }, undefined, (err) => {
-                console.error('An error occurred loading the texture:', err);
-            });
-
-            camera.position.z = 100;
-            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-            directionalLight.position.set(0, 1, 1).normalize();
-            scene.add(directionalLight);
-
-            window.addEventListener('resize', onWindowResize);
-            document.addEventListener('mousedown', onMouseDown);
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('touchstart', onTouchStart);
-            document.addEventListener('touchmove', onTouchMove);
-            document.addEventListener('touchend', onTouchEnd);
-
-            setInterval(drawArc, 200);
-            animate();
-        }
-
         function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setSize(width, height);
         }
 
         function onMouseDown(event) {
@@ -163,7 +147,6 @@
 
             globe.rotation.y += deltaMove.x * 0.005;
             globe.rotation.x += deltaMove.y * 0.005;
-
             previousMousePosition = { x: event.clientX, y: event.clientY };
         }
 
@@ -173,7 +156,10 @@
 
         function onTouchStart(event) {
             mouseDown = true;
-            previousMousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+            previousMousePosition = { 
+                x: event.touches[0].clientX, 
+                y: event.touches[0].clientY 
+            };
         }
 
         function onTouchMove(event) {
@@ -186,7 +172,6 @@
 
             globe.rotation.y += deltaMove.x * 0.005;
             globe.rotation.x += deltaMove.y * 0.005;
-
             previousMousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
         }
 
@@ -197,7 +182,7 @@
         function animate() {
             requestAnimationFrame(animate);
             if (globe) {
-                globe.rotation.y += 0.005;
+                globe.rotation.y += 0.005; // Example rotation speed
             }
             renderer.render(scene, camera);
         }
