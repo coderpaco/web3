@@ -23,46 +23,35 @@
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
         const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
 
-        // Land detection function
         function isPointOnLand(lat, lon) {
             const x = Math.floor((lon + Math.PI) / (2 * Math.PI) * landTexture.width);
             const y = Math.floor((Math.PI / 2 - lat) / Math.PI * landTexture.height);
 
-            const ctx = document.createElement('canvas').getContext('2d');
             ctx.drawImage(landTexture, 0, 0);
-
             const pixel = ctx.getImageData(x, y, 1, 1).data;
 
-            // Check if the pixel is within the defined land color range and not water
             return (
                 pixel[0] >= landColorRange.min[0] && pixel[0] <= landColorRange.max[0] &&
                 pixel[1] >= landColorRange.min[1] && pixel[1] <= landColorRange.max[1] &&
                 pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2] &&
-                !(pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100) // Exclude specific water hues
+                !(pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100)
             );
         }
 
-        // Function to draw arcs between land points
         function drawArc() {
             const radius = 50;
             const heightOffset = 5;
             let pointA, pointB;
 
-            // Find random point A on land
             do {
-                pointA = {
-                    lat: Math.random() * Math.PI - Math.PI / 2,
-                    lon: Math.random() * 2 * Math.PI - Math.PI
-                };
+                pointA = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
             } while (!isPointOnLand(pointA.lat, pointA.lon));
 
-            // Find random point B on land
             do {
-                pointB = {
-                    lat: Math.random() * Math.PI - Math.PI / 2,
-                    lon: Math.random() * 2 * Math.PI - Math.PI
-                };
+                pointB = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
             } while (!isPointOnLand(pointB.lat, pointB.lon));
 
             const pointACartesian = new THREE.Vector3(
@@ -87,7 +76,6 @@
                     .lerp(pointBCartesian, t)
                     .normalize()
                     .multiplyScalar(radius);
-
                 arcPoint.y += heightOffset * Math.sin(t * Math.PI);
                 arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
             }
@@ -112,22 +100,19 @@
 
             const geometry = new THREE.SphereGeometry(50, 64, 64);
             const textureLoader = new THREE.TextureLoader();
-            textureLoader.load('earth_texture.png', texture => {
-                const material = new THREE.MeshBasicMaterial({
-                    map: texture,
-                    side: THREE.FrontSide
-                });
 
+            textureLoader.load('earth_texture.png', texture => {
+                const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.FrontSide });
                 globe = new THREE.Mesh(geometry, material);
                 scene.add(globe);
                 landTexture = texture.image;
+            }, undefined, (err) => {
+                console.error('An error happened loading the texture:', err);
             });
 
             camera.position.z = 100;
 
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-            
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
             directionalLight.position.set(0, 1, 1).normalize();
             scene.add(directionalLight);
@@ -175,10 +160,7 @@
 
         function onTouchStart(event) {
             mouseDown = true;
-            previousMousePosition = { 
-                x: event.touches[0].clientX, 
-                y: event.touches[0].clientY 
-            };
+            previousMousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
         }
 
         function onTouchMove(event) {
@@ -192,10 +174,7 @@
             globe.rotation.y += deltaMove.x * 0.005;
             globe.rotation.x += deltaMove.y * 0.005;
 
-            previousMousePosition = { 
-                x: event.touches[0].clientX, 
-                y: event.touches[0].clientY 
-            };
+            previousMousePosition = { x: event.touches[0].clientX, y: event.touches[0].clientY };
         }
 
         function onTouchEnd() {
