@@ -22,7 +22,7 @@
         let scene, camera, renderer, globe;
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
-        const landColorRange = { min: [65,72,51], max: [172,225,175] };
+        const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
 
         function init() {
             scene = new THREE.Scene();
@@ -44,7 +44,7 @@
                 landTexture = texture.image;
             });
 
-            camera.position.z = 50;
+            camera.position.z = 100;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
