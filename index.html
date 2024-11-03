@@ -26,6 +26,7 @@
 
         function init() {
             scene = new THREE.Scene();
+            // Set a wider field of view for mobile
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -44,7 +45,8 @@
                 landTexture = texture.image;
             });
 
-            camera.position.z = 100;
+            // Position camera further away
+            camera.position.z = 150;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
@@ -59,11 +61,11 @@
             document.addEventListener('touchstart', onTouchStart);
             document.addEventListener('touchmove', onTouchMove);
             document.addEventListener('touchend', onTouchEnd);
-            document.addEventListener('touchmove', (e) => e.preventDefault()); // Prevent default scrolling on touch devices
+            document.addEventListener('touchmove', (e) => e.preventDefault());
 
             setInterval(drawArc, 200);
             animate();
-            onWindowResize(); // Call it initially to set the size correctly
+            onWindowResize();
         }
 
         function onWindowResize() {
@@ -72,7 +74,6 @@
             camera.aspect = width / height;
             camera.updateProjectionMatrix();
             renderer.setSize(width, height);
-            camera.position.z = Math.max(100, height / 2); // Adjust based on height
         }
 
         function onMouseDown(event) {
