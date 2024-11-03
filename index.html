@@ -24,9 +24,19 @@
         let landTexture;
         const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
 
+        // Define land points
+        const landPoints = [
+            { lat: 0.7102, lon: -1.2915 }, // North America
+            { lat: -0.4102, lon: -0.8149 }, // South America
+            { lat: 0.8989, lon: -0.0022 }, // Europe
+            { lat: -0.0225, lon: 0.6422 }, // Africa
+            { lat: 0.6965, lon: 2.0340 }, // Asia
+            { lat: -0.5910, lon: 2.6391 }, // Australia
+            { lat: -1.5708, lon: 0.0000 }, // Antarctica
+        ];
+
         function init() {
             scene = new THREE.Scene();
-            // Set a wider field of view for mobile
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -45,7 +55,6 @@
                 landTexture = texture.image;
             });
 
-            // Position camera further away
             camera.position.z = 150;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -66,6 +75,53 @@
             setInterval(drawArc, 200);
             animate();
             onWindowResize();
+        }
+
+        function drawArc() {
+            const radius = 50;
+            const heightOffset = 5;
+
+            const pointAIndex = Math.floor(Math.random() * landPoints.length);
+            const pointBIndex = Math.floor(Math.random() * landPoints.length);
+            if (pointAIndex === pointBIndex) return;
+
+            const pointA = landPoints[pointAIndex];
+            const pointB = landPoints[pointBIndex];
+
+            const pointACartesian = new THREE.Vector3(
+                radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
+                radius * Math.sin(pointA.lat),
+                radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
+            );
+            const pointBCartesian = new THREE.Vector3(
+                radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
+                radius * Math.sin(pointB.lat),
+                radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
+            );
+
+            const arcPoints = [];
+            const segments = 30;
+
+            for (let i = 0; i <= segments; i++) {
+                const t = i / segments;
+                const arcPoint = new THREE.Vector3()
+                    .copy(pointACartesian)
+                    .lerp(pointBCartesian, t)
+                    .normalize()
+                    .multiplyScalar(radius);
+                arcPoint.y += heightOffset * Math.sin(t * Math.PI);
+                arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
+            }
+
+            const arcGeometry = new THREE.BufferGeometry();
+            arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
+            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2 });
+            const arc = new THREE.Line(arcGeometry, arcMaterial);
+            globe.add(arc);
+
+            setTimeout(() => {
+                globe.remove(arc);
+            }, 1000);
         }
 
         function onWindowResize() {
@@ -100,9 +156,9 @@
 
         function onTouchStart(event) {
             mouseDown = true;
-            previousMousePosition = {
-                x: event.touches[0].clientX,
-                y: event.touches[0].clientY
+            previousMousePosition = { 
+                x: event.touches[0].clientX, 
+                y: event.touches[0].clientY 
             };
         }
 
