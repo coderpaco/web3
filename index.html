@@ -22,48 +22,52 @@
         let scene, camera, renderer, globe;
         let mouseDown = false, previousMousePosition = { x: 0, y: 0 };
         let landTexture;
-        const landColorRange = { min: [100, 100, 100], max: [255, 255, 255] };
+        const landColorRange = { min: [200, 200, 200], max: [255, 255, 255] };
 
         function isPointOnLand(lat, lon) {
             const x = Math.floor((lon + Math.PI) / (2 * Math.PI) * landTexture.width);
             const y = Math.floor((Math.PI / 2 - lat) / Math.PI * landTexture.height);
 
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = landTexture.width;
-            canvas.height = landTexture.height;
+            const ctx = document.createElement('canvas').getContext('2d');
             ctx.drawImage(landTexture, 0, 0);
 
             const pixel = ctx.getImageData(x, y, 1, 1).data;
 
-            const isLandColor = (
+            return (
                 pixel[0] >= landColorRange.min[0] && pixel[0] <= landColorRange.max[0] &&
                 pixel[1] >= landColorRange.min[1] && pixel[1] <= landColorRange.max[1] &&
-                pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2]
+                pixel[2] >= landColorRange.min[2] && pixel[2] <= landColorRange.max[2] &&
+                !(pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100) // Exclude specific water hues
             );
-
-            const isWaterHue = (pixel[0] < 80 && pixel[1] < 80 && pixel[2] > 100);
-
-            return isLandColor && !isWaterHue;
         }
 
-        // Function to draw arcs between land points
         function drawArc() {
             const radius = 50;
             const heightOffset = 5;
+            let pointA, pointB;
 
-            const pointAIndex = Math.floor(Math.random() * landPoints.length);
-            const pointBIndex = Math.floor(Math.random() * landPoints.length);
-            if (pointAIndex === pointBIndex) return;
+            // Find random point A on land
+            do {
+                pointA = {
+                    lat: Math.random() * Math.PI - Math.PI / 2,
+                    lon: Math.random() * 2 * Math.PI - Math.PI
+                };
+            } while (!isPointOnLand(pointA.lat, pointA.lon));
 
-            const pointA = landPoints[pointAIndex];
-            const pointB = landPoints[pointBIndex];
+            // Find random point B on land
+            do {
+                pointB = {
+                    lat: Math.random() * Math.PI - Math.PI / 2,
+                    lon: Math.random() * 2 * Math.PI - Math.PI
+                };
+            } while (!isPointOnLand(pointB.lat, pointB.lon));
 
             const pointACartesian = new THREE.Vector3(
                 radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
                 radius * Math.sin(pointA.lat),
                 radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
             );
+
             const pointBCartesian = new THREE.Vector3(
                 radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
                 radius * Math.sin(pointB.lat),
@@ -116,10 +120,11 @@
                 landTexture = texture.image;
             });
 
-            camera.position.z = 50;
+            camera.position.z = 100;
 
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
+            
             const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
             directionalLight.position.set(0, 1, 1).normalize();
             scene.add(directionalLight);
@@ -128,20 +133,15 @@
             document.addEventListener('mousedown', onMouseDown);
             document.addEventListener('mousemove', onMouseMove);
             document.addEventListener('mouseup', onMouseUp);
-            document.addEventListener('touchstart', onTouchStart);
-            document.addEventListener('touchmove', onTouchMove);
-            document.addEventListener('touchend', onTouchEnd);
 
             setInterval(drawArc, 200);
             animate();
         }
 
         function onWindowResize() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            camera.aspect = width / height;
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
+            renderer.setSize(window.innerWidth, window.innerHeight);
         }
 
         function onMouseDown(event) {
@@ -167,53 +167,15 @@
             mouseDown = false;
         }
 
-        function onTouchStart(event) {
-            mouseDown = true;
-            previousMousePosition = { 
-                x: event.touches[0].clientX, 
-                y: event.touches[0].clientY 
-            };
-        }
-
-        function onTouchMove(event) {
-            if (!mouseDown) return;
-
-            const deltaMove = {
-                x: event.touches[0].clientX - previousMousePosition.x,
-                y: event.touches[0].clientY - previousMousePosition.y
-            };
-
-            globe.rotation.y += deltaMove.x * 0.005;
-            globe.rotation.x += deltaMove.y * 0.005;
-
-            previousMousePosition = { 
-                x: event.touches[0].clientX, 
-                y: event.touches[0].clientY 
-            };
-        }
-
-        function onTouchEnd() {
-            mouseDown = false;
-        }
+        animate();
 
         function animate() {
             requestAnimationFrame(animate);
             if (globe) {
-                globe.rotation.y += 0.005; // Optional rotation
+                globe.rotation.y += 0.005; // Example rotation speed, you can adjust or remove this
             }
             renderer.render(scene, camera);
         }
-
-        // Define land points (example)
-        const landPoints = [
-            { lat: 0.7102, lon: -1.2915 }, // North America
-            { lat: -0.4102, lon: -0.8149 }, // South America
-            { lat: 0.8989, lon: -0.0022 }, // Europe
-            { lat: -0.0225, lon: 0.6422 }, // Africa
-            { lat: 0.6965, lon: 2.0340 }, // Asia
-            { lat: -0.5910, lon: 2.6391 }, // Australia
-            { lat: -1.5708, lon: 0.0000 }, // Antarctica
-        ];
 
         init();
     </script>
