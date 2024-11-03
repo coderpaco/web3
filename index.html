@@ -45,55 +45,78 @@
             );
         }
 
-        function drawArc() {
-            const radius = 50;
-            const heightOffset = 5;
-            let pointA, pointB;
+let arcCount = 0; // Counter for the current number of arcs
+const maxArcs = 10; // Maximum number of arcs to keep in memory
 
-            do {
-                pointA = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
-            } while (!isPointOnLand(pointA.lat, pointA.lon));
+function drawArc() {
+    // Prevent drawing more arcs than allowed
+    if (arcCount >= maxArcs) return;
 
-            do {
-                pointB = { lat: Math.random() * Math.PI - Math.PI / 2, lon: Math.random() * 2 * Math.PI - Math.PI };
-            } while (!isPointOnLand(pointB.lat, pointB.lon));
+    const radius = 50;
+    const heightOffset = 5;
+    let pointA, pointB;
 
-            const pointACartesian = new THREE.Vector3(
-                radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
-                radius * Math.sin(pointA.lat),
-                radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
-            );
+    // Find a random point A on land
+    do {
+        pointA = {
+            lat: Math.random() * Math.PI - Math.PI / 2,
+            lon: Math.random() * 2 * Math.PI - Math.PI
+        };
+    } while (!isPointOnLand(pointA.lat, pointA.lon));
 
-            const pointBCartesian = new THREE.Vector3(
-                radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
-                radius * Math.sin(pointB.lat),
-                radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
-            );
+    // Find a random point B on land
+    do {
+        pointB = {
+            lat: Math.random() * Math.PI - Math.PI / 2,
+            lon: Math.random() * 2 * Math.PI - Math.PI
+        };
+    } while (!isPointOnLand(pointB.lat, pointB.lon));
 
-            const arcPoints = [];
-            const segments = 30;
+    // Convert latitude and longitude to Cartesian coordinates
+    const pointACartesian = new THREE.Vector3(
+        radius * Math.cos(pointA.lat) * Math.cos(pointA.lon),
+        radius * Math.sin(pointA.lat),
+        radius * Math.cos(pointA.lat) * Math.sin(pointA.lon)
+    );
 
-            for (let i = 0; i <= segments; i++) {
-                const t = i / segments;
-                const arcPoint = new THREE.Vector3()
-                    .copy(pointACartesian)
-                    .lerp(pointBCartesian, t)
-                    .normalize()
-                    .multiplyScalar(radius);
-                arcPoint.y += heightOffset * Math.sin(t * Math.PI);
-                arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
-            }
+    const pointBCartesian = new THREE.Vector3(
+        radius * Math.cos(pointB.lat) * Math.cos(pointB.lon),
+        radius * Math.sin(pointB.lat),
+        radius * Math.cos(pointB.lat) * Math.sin(pointB.lon)
+    );
 
-            const arcGeometry = new THREE.BufferGeometry();
-            arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
-            const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
-            const arc = new THREE.Line(arcGeometry, arcMaterial);
-            globe.add(arc);
+    const arcPoints = [];
+    const segments = 30; // Number of segments for the arc
 
-            setTimeout(() => {
-                globe.remove(arc);
-            }, 1000);
-        }
+    // Generate points along the arc
+    for (let i = 0; i <= segments; i++) {
+        const t = i / segments;
+        const arcPoint = new THREE.Vector3()
+            .copy(pointACartesian)
+            .lerp(pointBCartesian, t)
+            .normalize()
+            .multiplyScalar(radius);
+        arcPoint.y += heightOffset * Math.sin(t * Math.PI); // Create height variation
+        arcPoints.push(arcPoint.x, arcPoint.y, arcPoint.z);
+    }
+
+    // Create geometry and material for the arc
+    const arcGeometry = new THREE.BufferGeometry();
+    arcGeometry.setAttribute('position', new THREE.Float32BufferAttribute(arcPoints, 3));
+    const arcMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+    const arc = new THREE.Line(arcGeometry, arcMaterial);
+
+    // Add the arc to the globe
+    globe.add(arc);
+    arcCount++; // Increment the arc count
+
+    // Remove the arc after 1 second and decrement the count
+    setTimeout(() => {
+        globe.remove(arc);
+        arcCount--; // Decrement the arc count
+    }, 1000);
+}
+
 
         function init() {
             scene = new THREE.Scene();
