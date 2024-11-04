@@ -19,7 +19,7 @@
 <body>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        const version = "1.0.1";
+        const version = "1.0.2";
         console.log(`Version: ${version}`);
 
         
@@ -128,14 +128,27 @@
             }, 1000);
         }
 
-        function onWindowResize() {
-            const width = window.innerWidth;
-            const height = window.innerHeight;
-            camera.aspect = width / height;
-            camera.updateProjectionMatrix();
-            renderer.setSize(width, height);
-        }
+        //function onWindowResize() {
+        //    const width = window.innerWidth;
+        //    const height = window.innerHeight;
+        //    camera.aspect = width / height;
+        //    camera.updateProjectionMatrix();
+        //    renderer.setSize(width, height);
+        //}
 
+        function onWindowResize() {
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const aspect = width / height;
+
+    // Adjust field of view based on aspect ratio
+    camera.fov = aspect < 1 ? 100 : 75; // Increase FOV in portrait mode to fit the globe
+    camera.aspect = aspect;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(width, height);
+}
+        
         function onMouseDown(event) {
             mouseDown = true;
             previousMousePosition = { x: event.clientX, y: event.clientY };
